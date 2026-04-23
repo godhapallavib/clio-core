@@ -36,4 +36,9 @@ pkgs:
 
   - pkg_type: builtin.biobb_wf_md_setup
     deploy_mode: container
+    # Stage MD-setup outputs through the CTE FUSE mount so iowarp
+    # actually sees the I/O. Intermediates live on /tmp scratch (GROMACS
+    # uses rename(2), which wrp_cte_fuse returns ENOSYS on); final
+    # per-PDB trees cp into this dir via plain open+write+close.
+    out: /mnt/wrp_cte/biobb_out
 

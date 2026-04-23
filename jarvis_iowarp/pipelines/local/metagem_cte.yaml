@@ -36,4 +36,7 @@ pkgs:
 
   - pkg_type: builtin.metagem
     deploy_mode: container
+    # Route metaGEM's Snakemake root/scratch/qfiltered outputs through
+    # the CTE FUSE mount so iowarp actually sees the I/O.
+    out: /mnt/wrp_cte/metagem
 

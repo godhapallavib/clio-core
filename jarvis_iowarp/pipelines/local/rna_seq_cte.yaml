@@ -36,4 +36,9 @@ pkgs:
 
   - pkg_type: builtin.rna_seq_star_deseq2
     deploy_mode: container
+    # Stage Snakemake results through the CTE FUSE mount so iowarp
+    # actually sees the I/O. Intermediates live on /tmp scratch
+    # (snakemake uses rename(2), which wrp_cte_fuse returns ENOSYS on);
+    # the final results/ tree cp's into this dir via plain write.
+    out: /mnt/wrp_cte/rnaseq_out
 
