@@ -1,0 +1,52 @@
+# MetaGEM metagenomics + CTE via FUSE filesystem (Ares cluster)
+#
+# Usage:
+#   jarvis hostfile set ~/hostfile_local.txt
+#   jarvis ppl build yaml ~/clio-core/jarvis_iowarp/pipelines/ares/metagem_cte.yaml
+#   jarvis ppl run yaml ~/clio-core/jarvis_iowarp/pipelines/ares/metagem_cte.yaml
+
+name: metagem_cte
+
+install_manager: container
+container_engine: docker
+container_base: ubuntu:24.04
+
+container_extensions:
+  cap_add:
+    - SYS_ADMIN
+  devices:
+    - /dev/fuse:/dev/fuse
+  security_opt:
+    - apparmor:unconfined
+    - seccomp=unconfined
+
+env:
+  OMPI_MCA_btl_tcp_if_include: enp47s0np0
+
+pkgs:
+  - pkg_type: builtin.hdf5
+    deploy_mode: container
+
+  - pkg_type: builtin.adios2
+    deploy_mode: container
+
+  - pkg_type: jarvis_iowarp.wrp_runtime
+    deploy_mode: container
+    git_branch: transparent-compress
+    cmake_preset: release-adapter
+    sleep: 4
+
+  - pkg_type: jarvis_iowarp.wrp_cte
+    deploy_mode: container
+    devices:
+      - ["ram::cte_ram_tier1", "4GB", 1.0]
+
+  - pkg_type: jarvis_iowarp.wrp_cte_libfuse
+    deploy_mode: container
+    mountpoint: /mnt/wrp_cte
+    sleep: 2
+
+  - pkg_type: builtin.metagem
+    deploy_mode: container
+    nprocs: 1
+    ppn: 1
