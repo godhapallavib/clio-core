@@ -1,0 +1,46 @@
+# Redis Micro-benchmark — IOWarp vs Redis Comparison (Redis side)
+# Purpose: Measure Redis Set/Get throughput across I/O sizes and client counts.
+#          Redis uses DRAM by default; no persistence configured.
+#
+# Parameter sweep:
+#   req_size (bytes): 4 KB, 16 KB, 64 KB, 128 KB, 256 KB, 1 MB, 16 MB
+#   nthreads (clients): 1, 2, 4, 8, 16, 32
+#
+# Total cases: 7 × 6 = 42
+#
+# Minimum runtime note:
+#   count=100000 ensures ~15 s for intermediate I/O sizes (16–256 KB) at 1 client.
+#   For small I/O sizes / high client counts: runtime will be shorter — increase count
+#     to ~1 000 000 if you need guaranteed 15 s at every point.
+#   For 16 MB: count is automatically bounded by memory/throughput; reduce if too slow.
+#
+# Compare results against microbench_cte.yaml to evaluate IOWarp vs. Redis.
+
+config:
+  name: redis_microbench
+  pkgs:
+    - pkg_type: jarvis_iowarp.redis
+      pkg_name: redis
+      port: 6379
+
+    - pkg_type: jarvis_iowarp.redis_benchmark
+      pkg_name: redis_bench
+      port: 6379
+      count: 100000        # requests per case; increase for smaller I/O sizes
+      write: true
+      read: true
+      nthreads: 1          # overridden by vars below
+      pipeline: 1
+      req_size: 1024       # bytes; overridden by vars below
+
+vars:
+  redis_bench.req_size: [4096, 16384, 65536, 131072, 262144, 1048576, 16777216]
+  redis_bench.nthreads: [1, 2, 4, 8, 16, 32]
+
+loop:
+  - [redis_bench.req_size]
+  - [redis_bench.nthreads]
+
+repeat: 1
+
+output: "${HOME}/redis_microbench_results"

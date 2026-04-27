@@ -76,7 +76,7 @@ install_miniconda() {
     echo ""
 
     # Download Miniconda installer
-    INSTALLER_SCRIPT="/tmp/miniconda_installer.sh"
+    INSTALLER_SCRIPT="$HOME/miniconda_installer.sh"
     echo -e "${BLUE}Downloading Miniconda installer...${NC}"
     curl -L -o "$INSTALLER_SCRIPT" "$INSTALLER_URL"
 

@@ -9,6 +9,7 @@ from jarvis_cd.shell import Exec, MpiExecInfo, PsshExecInfo, LocalExecInfo
 from jarvis_cd.shell.process import Mkdir, Rm
 from jarvis_cd.util.config_parser import JsonFile
 import os
+import subprocess
 
 # Container build is delegated to jarvis_iowarp.wrp_runtime: every pipeline
 # that uses adios2_gray_scott also instantiates wrp_runtime, whose build.sh
@@ -327,3 +328,54 @@ class Adios2GrayScott(Application):
                        self.config['checkpoint_output'],
                        self.config['db_path']]
         Rm(output_file, PsshExecInfo(hostfile=self.hostfile)).run()
+
+    def _get_stat(self, stats=None):
+        """Append gs_out_bytes / gs_out_gib columns to results.csv.
+
+        Resolves the output path in priority order:
+          1. self.config['out_file']  – set by _configure() even when omitted in YAML
+          2. shared_dir/gray-scott-output – Jarvis per-run scratch directory
+        Never falls back to '.' to avoid measuring the wrong directory.
+        """
+        out_path = self.config.get("out_file") or ""
+        out_path = os.path.expandvars(out_path).strip()
+
+        if not out_path or not os.path.exists(out_path):
+            shared_out = os.path.join(self.shared_dir, "gray-scott-output")
+            if os.path.exists(shared_out):
+                target = shared_out
+            elif out_path:
+                parent = os.path.dirname(out_path)
+                target = parent if parent and os.path.exists(parent) else None
+            else:
+                target = None
+        else:
+            target = out_path
+
+        def du_bytes(p):
+            raw = subprocess.check_output(
+                ["du", "-sb", p], stderr=subprocess.DEVNULL
+            ).decode().split()[0]
+            return int(raw)
+
+        out_bytes = 0
+        if target:
+            try:
+                out_bytes = du_bytes(target)
+            except Exception:
+                for root, _, files in os.walk(target):
+                    for f in files:
+                        try:
+                            out_bytes += os.path.getsize(os.path.join(root, f))
+                        except OSError:
+                            pass
+
+        new_stats = {
+            "gs_out_path":  target or "",
+            "gs_out_bytes": out_bytes,
+            "gs_out_gib":   out_bytes / (1024 ** 3),
+        }
+        if stats is None:
+            return new_stats
+        stats.update(new_stats)
+        return stats

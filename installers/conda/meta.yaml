@@ -30,6 +30,8 @@ requirements:
     - catch2
     - libaio      # [linux]
     - liburing    # [linux]
+    - openmpi
+    - adios2 * mpi_openmpi_*
   run:
     - python
     - zeromq
@@ -43,6 +45,8 @@ requirements:
     - pyyaml
     - msgpack-python
     - flask
+    - openmpi
+    - adios2
 
 test:
   commands:

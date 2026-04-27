@@ -1,0 +1,25 @@
+# VPIC Harris reconnection benchmark — single node
+# Runs the harris magnetic-reconnection input deck with 1 MPI rank.
+#
+# Usage:
+#   jarvis ppl run yaml vpic_harris.yaml
+#
+# Set VPIC_ROOT to the build directory, e.g.:
+#   export VPIC_ROOT=/path/to/clio-core/external/vpic/build
+
+config:
+  name: vpic_harris
+  pkgs:
+    - pkg_type: jarvis_iowarp.vpic
+      pkg_name: vpic
+      deck: "/home/godhapallavi/IOWarp/clio-core/external/vpic/sample/harris"
+      vpic_bin: "/home/godhapallavi/IOWarp/clio-core/external/vpic/build/bin/vpic"
+      nprocs: 1
+      ppn: 1
+      tpp: 1
+      output_dir: "${HOME}/vpic_harris_output"
+      deck_args: ""
+
+repeat: 1
+
+output: "${HOME}/vpic_harris_results"

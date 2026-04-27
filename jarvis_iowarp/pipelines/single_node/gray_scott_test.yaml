@@ -1,0 +1,80 @@
+# Gray Scott Parameter Exploration
+# Purpose: Understand how L, steps, plotgap, and nprocs affect I/O size and runtime.
+#
+# Output size formula:  L^3 * 8 bytes * (steps / plotgap)
+#
+# Reference points (nprocs=4, bp5 engine):
+#   L=64,  steps=100, plotgap=5  ->  64^3 * 8B * 20  ~=   33 MB
+#   L=96,  steps=100, plotgap=5  ->  96^3 * 8B * 20  ~=  113 MB
+#   L=128, steps=200, plotgap=5  ->  128^3 * 8B * 40 ~=  536 MB
+#   L=192, steps=200, plotgap=5  ->  192^3 * 8B * 40 ~=  1.8 GB
+#   L=256, steps=400, plotgap=4  ->  256^3 * 8B * 100~=  12.6 GB
+#   L=300, steps=400, plotgap=2  ->  300^3 * 8B * 200~=  43 GB   (may be too large)
+#
+# Recommended configuration to hit ~20 GB total:
+#   L=256, steps=400, plotgap=4, nprocs=4 -> ~12.6 GB per run
+#
+# Memory per process: L^3 / nprocs * 8 bytes
+#   L=256, nprocs=4: 4M * 8B = 32 MB/process  (safe)
+#   L=256, nprocs=1: 16M * 8B = 128 MB/process (safe)
+#
+# This sweep varies each dimension independently to produce plots of:
+#   - I/O size vs. L
+#   - I/O size vs. steps/plotgap ratio
+#   - Runtime vs. nprocs
+
+config:
+  name: gray_scott_exploration
+  pkgs:
+    - pkg_type: jarvis_iowarp.adios2_gray_scott
+      pkg_name: gsbench
+      nprocs: 4
+      ppn: 4
+      L: 128
+      steps: 200
+      plotgap: 10
+      # out_file intentionally omitted: jarvis assigns a unique shared-dir path
+      # per combination run, so each case writes to its own directory and
+      # _get_stat() correctly measures per-run output size.
+      engine: "bp5"
+      checkpoint: false
+
+# ── Sweep 1: vary L to study per-snapshot I/O size ───────────────────────────
+# Uncomment one sweep block at a time, or run sequentially with different output dirs.
+
+# vars:
+#   gsbench.L: [64, 96, 128, 192, 256]
+#   gsbench.nprocs: [4]
+#   gsbench.ppn: [4]
+
+# loop:
+#   - [gsbench.L]
+#   - [gsbench.nprocs, gsbench.ppn]
+
+# repeat: 1
+
+# output: "${HOME}/gray_scott_explore_L"
+
+# ── To study steps / plotgap effects, use this vars block instead: ────────────
+vars:
+  gsbench.steps:   [50, 100, 200, 400]
+  gsbench.plotgap: [5, 10, 20]
+  gsbench.nprocs:  [4]
+  gsbench.ppn:     [4]
+
+loop:
+  - [gsbench.steps]
+  - [gsbench.plotgap]
+  - [gsbench.nprocs, gsbench.ppn]
+
+output: "${HOME}/gray_scott_explore_steps"
+
+# ── To study nprocs scaling (fix L=128, steps=200, plotgap=10): ───────────────
+# vars:
+#   gsbench.nprocs: [1, 2, 4, 8]
+#   gsbench.ppn:    [1, 2, 4, 8]
+#
+# loop:
+#   - [gsbench.nprocs, gsbench.ppn]
+#
+# output: "${HOME}/gray_scott_explore_nprocs"

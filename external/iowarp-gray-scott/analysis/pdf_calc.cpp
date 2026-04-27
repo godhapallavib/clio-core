@@ -16,6 +16,7 @@
 #include <string>
 #include <thread>
 
+#include <mpi.h>
 #include "adios2.h"
 
 bool epsilon(double d) { return (d < 1.0e-20); }

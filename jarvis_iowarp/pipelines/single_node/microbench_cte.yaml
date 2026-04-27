@@ -1,0 +1,73 @@
+# IOWarp CTE Micro-benchmark — IOWarp vs Redis Comparison (IOWarp side)
+# Purpose: Measure IOWarp CTE Put/Get throughput across I/O sizes, client counts,
+#          runtime thread counts, and client transport modes, using DRAM-only storage.
+#
+# Parameter sweep:
+#   runtime.num_threads: 2, 4, 8, 16     (IOWarp worker threads in the runtime)
+#   io_size:             4k, 16k, 64k, 128k, 256k, 1m, 16m
+#   nprocs (clients):    1, 2, 4, 8, 16, 32  (each MPI rank is an independent client)
+#   ipc_mode:            shm, ipc, tcp        (client-to-runtime transport)
+#
+# Total cases: 4 × 7 × 6 × 3 = 504
+#
+# Storage: ram::cache (DRAM) — matches Redis's in-memory storage condition.
+#
+# io_count=1000 means each client process performs 1000 Put+Get pairs per case.
+# Increase io_count for more stable measurements on fast hardware.
+#
+# cte_bench.num_threads=1 (one worker thread per process) keeps the "client" concept
+# equivalent to redis_benchmark's nthreads: each nproc is one independent client.
+# runtime.num_threads is the separate IOWarp server-side thread sweep.
+#
+# Compare results against microbench_redis.yaml to evaluate IOWarp vs. Redis.
+
+config:
+  name: cte_microbench
+  pkgs:
+    - pkg_type: jarvis_iowarp.wrp_runtime
+      pkg_name: runtime
+      do_dbg: false
+      log_level: "info"
+      ipc_mode: "shm"          # overridden by vars below (runtime.ipc_mode)
+      num_threads: 2            # overridden by vars below (runtime.num_threads)
+
+    - pkg_type: jarvis_iowarp.wrp_cte
+      pkg_name: cte_core
+      devices:
+        - ["ram::cache", "8GB", 1.0]   # DRAM-only, matches Redis test condition
+      dpe_type: "max_bw"
+      neighborhood: 1
+      default_target_timeout_ms: 30000
+      poll_period_ms: 5000
+
+    - pkg_type: jarvis_iowarp.wrp_cte_bench
+      pkg_name: cte_bench
+      test_case: "PutGet"
+      num_threads: 1           # one thread per process; nprocs = number of clients
+      depth: 1                 # single async depth for fair comparison with Redis
+      io_size: "4k"            # overridden by vars below
+      io_count: 1000           # operations per client process per case
+      nprocs: 1                # overridden by vars below (= number of clients)
+      ppn: 1                   # overridden by vars below
+
+vars:
+  runtime.num_threads: [2]
+  runtime.ipc_mode: ["ipc"]
+  cte_bench.io_size: ["4k", "16k", "64k"]
+  cte_bench.nprocs: [1, 2, 4]
+  cte_bench.ppn: [1, 2, 4]
+  # runtime.num_threads: [2, 4, 8, 16]
+  # runtime.ipc_mode: ["shm", "ipc", "tcp"]
+  # cte_bench.io_size: ["4k", "16k", "64k", "128k", "256k", "1m", "16m"]
+  # cte_bench.nprocs: [1, 2, 4, 8, 16, 32]
+  # cte_bench.ppn:    [1, 2, 4, 8, 16, 32]
+
+loop:
+  - [runtime.num_threads]               # outermost: restart runtime per thread count
+  - [runtime.ipc_mode]                  # outer: restart runtime per transport mode
+  - [cte_bench.io_size]                 # middle: sweep I/O sizes
+  - [cte_bench.nprocs, cte_bench.ppn]  # inner:  sweep client counts (nprocs == ppn on single node)
+
+repeat: 1
+
+output: "${HOME}/cte_microbench_results"
